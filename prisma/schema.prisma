@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PLACED
+  PROCESSING
+  DELIVERED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+
+  cart      Cart?
+  orders    Order[]
+
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id     Int     @id @default(autoincrement())
+  name   String
+  image  String?
+  trash  Boolean @default(false)
+
+  products Product[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Float
+  offerPrice  Float?
+  image       String?
+  stock       Int
+  stockType   String   // quantity / kg
+  trash       Boolean  @default(false)
+
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+}
+
+model Cart {
+  id     Int  @id @default(autoincrement())
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  items  CartItem[]
+}
+
+model CartItem {
+  id        Int @id @default(autoincrement())
+  quantity  Int
+
+  cartId    Int
+  cart      Cart @relation(fields: [cartId], references: [id])
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  totalPrice Float
+  status     OrderStatus @default(PLACED)
+
+  userId     Int
+  user       User @relation(fields: [userId], references: [id])
+
+  items      OrderItem[]
+
+  createdAt  DateTime @default(now())
+}
+
+model OrderItem {
+  id        Int @id @default(autoincrement())
+  quantity  Int
+  price     Float
+
+  orderId   Int
+  order     Order @relation(fields: [orderId], references: [id])
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+}

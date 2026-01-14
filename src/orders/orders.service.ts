@@ -10,16 +10,17 @@ export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
   async placeOrder(userId: number) {
-    const cart = await this.prisma.cart.findUnique({
-      where: { userId },
+  const cart = await this.prisma.cart.findFirst({
+  where: { userId },
+  include: {
+    items: {
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        product: true,
       },
-    });
+    },
+  },
+});
+
 
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');

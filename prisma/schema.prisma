@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -58,12 +59,13 @@ model Product {
 }
 
 model Cart {
-  id     Int  @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
 
-  userId Int  @unique
-  user   User @relation(fields: [userId], references: [id])
+  userId  Int?    @unique
+  guestId String? @unique
 
-  items  CartItem[]
+  user    User?   @relation(fields: [userId], references: [id])
+  items   CartItem[]
 }
 
 model CartItem {

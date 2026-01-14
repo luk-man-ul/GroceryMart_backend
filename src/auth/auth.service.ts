@@ -13,6 +13,7 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    console.log('REGISTER DTO RECEIVED:', dto);
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.user.create({
@@ -27,6 +28,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    console.log('LOGGING IN', dto);
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });

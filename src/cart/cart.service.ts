@@ -166,8 +166,8 @@ export class CartService {
         item.product.offerPrice ?? item.product.price
 
       return {
-        id: item.id,                 // ✅ FIX
-        productId: item.productId,   // ✅ FIX
+        id: item.id,                 
+        productId: item.productId,   
         product: item.product,
         quantity: item.quantity,
         total: price * item.quantity,
@@ -224,7 +224,7 @@ export class CartService {
     }
   }
 
-  // 🔥 clear guest cart
+  // clear guest cart
   await this.prisma.cartItem.deleteMany({
     where: { cartId: guestCart.id },
   })

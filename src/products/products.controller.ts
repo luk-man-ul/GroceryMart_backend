@@ -8,6 +8,7 @@ import {
   UploadedFile,
   Query,
   Delete,
+  Put,
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
@@ -25,13 +26,18 @@ export class ProductsController {
   constructor(private service: ProductsService) {}
 
   // ✅ GET ALL PRODUCTS
-  @Get()
-  getAll(
-    @Query('search') search?: string,
-    @Query('categoryId') categoryId?: string,
-  ) {
-    return this.service.findAll(search, categoryId ? +categoryId : undefined);
-  }
+ @Get()
+getAll(
+  @Query('search') search?: string,
+  @Query('categoryId') categoryId?: string,
+  @Query('trash') trash?: string,
+) {
+  return this.service.findAll(
+    search,
+    categoryId ? +categoryId : undefined,
+    trash === 'true',
+  )
+}
 
   // ✅ GET SINGLE PRODUCT
   @Get(':id')
@@ -54,6 +60,25 @@ export class ProductsController {
   remove(@Param('id') id: string) {
     return this.service.remove(+id);
   }
+
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles('ADMIN')
+@Post(':id/restore')
+restore(@Param('id') id: string) {
+  return this.service.restore(+id)
+}
+
+
+// ✅ UPDATE PRODUCT (ADMIN)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles('ADMIN')
+@Put(':id')
+update(
+  @Param('id') id: string,
+  @Body() dto: CreateProductDto,
+) {
+  return this.service.update(+id, dto)
+}
 
   // ✅ UPLOAD PRODUCT IMAGE (ADMIN ONLY)
   @UseGuards(AuthGuard('jwt'), RolesGuard)

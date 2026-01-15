@@ -12,20 +12,23 @@ export class ProductsService {
     });
   }
 
-  findAll(search?: string, categoryId?: number) {
-    return this.prisma.product.findMany({
-      where: {
-        trash: false,
-        name: search
-          ? { contains: search, mode: 'insensitive' }
-          : undefined,
-        categoryId: categoryId || undefined,
-      },
-      include: {
-        category: true,
-      },
-    });
-  }
+  findAll(
+  search?: string,
+  categoryId?: number,
+  showTrash = false,
+) {
+  return this.prisma.product.findMany({
+    where: {
+      trash: showTrash,
+      name: search
+        ? { contains: search, mode: 'insensitive' }
+        : undefined,
+      categoryId: categoryId || undefined,
+    },
+    include: { category: true },
+  })
+}
+
 
   findOne(id: number) {
     return this.prisma.product.findUnique({
@@ -33,6 +36,14 @@ export class ProductsService {
       include: { category: true },
     });
   }
+  
+  update(id: number, dto: CreateProductDto) {
+  return this.prisma.product.update({
+    where: { id },
+    data: dto,
+  })
+}
+
 
   remove(id: number) {
     return this.prisma.product.update({
@@ -40,4 +51,12 @@ export class ProductsService {
       data: { trash: true },
     });
   }
+
+  restore(id: number) {
+  return this.prisma.product.update({
+    where: { id },
+    data: { trash: false },
+  })
+}
+
 }

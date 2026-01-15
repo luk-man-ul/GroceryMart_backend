@@ -12,11 +12,28 @@ export class CategoriesService {
     });
   }
 
-  findAll() {
-    return this.prisma.category.findMany({
-      where: { trash: false },
-    });
-  }
+ findAll(showTrash = false) {
+  return this.prisma.category.findMany({
+    where: {
+      trash: showTrash,
+    },
+  });
+}
+
+update(id: number, dto: CreateCategoryDto) {
+  return this.prisma.category.update({
+    where: { id },
+    data: dto,
+  });
+}
+
+restore(id: number) {
+  return this.prisma.category.update({
+    where: { id },
+    data: { trash: false },
+  });
+}
+
 
   remove(id: number) {
     return this.prisma.category.update({

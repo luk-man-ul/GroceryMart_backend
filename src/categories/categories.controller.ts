@@ -12,15 +12,17 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { Query, Put } from '@nestjs/common';
 
 @Controller('categories')
 export class CategoriesController {
   constructor(private service: CategoriesService) {}
 
-  @Get()
-  getAll() {
-    return this.service.findAll();
-  }
+ 
+@Get()
+getAll(@Query('trash') trash?: string) {
+  return this.service.findAll(trash === 'true');
+}
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
@@ -35,4 +37,21 @@ export class CategoriesController {
   remove(@Param('id') id: string) {
     return this.service.remove(+id);
   }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles('ADMIN')
+@Post(':id/restore')
+restore(@Param('id') id: string) {
+  return this.service.restore(+id);
+}
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles('ADMIN')
+@Put(':id')
+update(
+  @Param('id') id: string,
+  @Body() dto: CreateCategoryDto,
+) {
+  return this.service.update(+id, dto);
+}
+
 }

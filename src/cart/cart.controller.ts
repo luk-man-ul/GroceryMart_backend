@@ -69,17 +69,28 @@ export class CartController {
     return this.service.removeFromCart({ userId, guestId, productId })
   }
 
-  // =========================
-  // GET CART
-  // =========================
-  @Get()
-  getCart(@Req() req) {
-    const userId = req.user?.sub ?? null
-    const guestId = userId ? undefined : req.cookies?.guestId
+// =========================
+// GET CART (GUEST / USER)
+// =========================
+@Get()
+getCart(
+  @Req() req,
+  @Res({ passthrough: true }) res,
+) {
+  const userId = req.user?.sub ?? null
+  let guestId = userId ? undefined : req.cookies?.guestId
 
-    return this.service.getCart({ userId, guestId })
+  // 🔥 FIX: ensure guestId exists BEFORE reading cart
+  if (!userId && !guestId) {
+    guestId = uuid()
+    res.cookie('guestId', guestId, {
+      httpOnly: true,
+      sameSite: 'lax',
+    })
   }
 
+  return this.service.getCart({ userId, guestId })
+}
   // =========================
   // MERGE GUEST CART → USER CART
   // =========================

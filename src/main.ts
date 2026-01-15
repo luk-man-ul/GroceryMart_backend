@@ -9,20 +9,20 @@ import { v4 as uuid } from 'uuid';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // ✅ ENABLE CORS
+  //  ENABLE CORS
   app.enableCors({
     origin: 'http://localhost:5173',
     credentials: true,
   });
 
-  // ✅ ENABLE VALIDATION
+  //  ENABLE VALIDATION
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
     }),
   );
 
-  // ✅ SERVE LOCAL UPLOADS
+  //  SERVE LOCAL UPLOADS
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads',
   });

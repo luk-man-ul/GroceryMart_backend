@@ -28,34 +28,43 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    console.log('LOGGING IN', dto);
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+  console.log('LOGGING IN', dto)
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+  const user = await this.prisma.user.findUnique({
+    where: { email: dto.email },
+  })
 
-    const passwordMatch = await bcrypt.compare(
-      dto.password,
-      user.password,
-    );
-
-    if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const token = await this.jwtService.signAsync(payload);
-
-    return {
-      access_token: token,
-    };
+  if (!user) {
+    throw new UnauthorizedException('Invalid credentials')
   }
+
+  // 🔒 BLOCK DISABLED USERS (VERY IMPORTANT)
+  if (!user.isActive) {
+    throw new UnauthorizedException(
+      'Account disabled by admin',
+    )
+  }
+
+  const passwordMatch = await bcrypt.compare(
+    dto.password,
+    user.password,
+  )
+
+  if (!passwordMatch) {
+    throw new UnauthorizedException('Invalid credentials')
+  }
+
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+  }
+
+  const token = await this.jwtService.signAsync(payload)
+
+  return {
+    access_token: token,
+  }
+}
+
 }

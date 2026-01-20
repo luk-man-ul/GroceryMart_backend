@@ -17,6 +17,14 @@ import { CartService } from './cart.service'
 import { AddToCartDto } from './dto/add-to-cart.dto'
 import { UpdateCartDto } from './dto/update-cart.dto'
 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger'
+
+@ApiTags('Cart')
 @UseGuards(OptionalJwtAuthGuard)
 @Controller('cart')
 export class CartController {
@@ -27,6 +35,11 @@ export class CartController {
   // ADD TO CART (GUEST / USER)
   // =========================
   @Post('add')
+  @ApiOperation({ summary: 'Add product to cart (guest or user)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Product added to cart',
+  })
   addToCart(
     @Req() req,
     @Res({ passthrough: true }) res,
@@ -51,6 +64,11 @@ export class CartController {
   // UPDATE CART ITEM
   // =========================
   @Put('update')
+   @ApiOperation({ summary: 'Update cart item quantity' })
+  @ApiResponse({
+    status: 200,
+    description: 'Cart updated successfully',
+  })
   updateCart(@Req() req, @Body() dto: UpdateCartDto) {
     const userId = req.user?.sub ?? null
     const guestId = userId ? undefined : req.cookies?.guestId
@@ -62,6 +80,11 @@ export class CartController {
   // REMOVE CART ITEM
   // =========================
   @Delete('remove')
+  @ApiOperation({ summary: 'Remove product from cart' })
+  @ApiResponse({
+    status: 200,
+    description: 'Product removed from cart',
+  })
   removeFromCart(@Req() req, @Body('productId') productId: number) {
     const userId = req.user?.sub ?? null
     const guestId = userId ? undefined : req.cookies?.guestId
@@ -73,6 +96,11 @@ export class CartController {
 // GET CART (GUEST / USER)
 // =========================
 @Get()
+ @ApiOperation({ summary: 'Get current cart (guest or user)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current cart details',
+  })
 getCart(
   @Req() req,
   @Res({ passthrough: true }) res,
@@ -95,7 +123,13 @@ getCart(
   // MERGE GUEST CART → USER CART
   // =========================
   @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
   @Post('merge')
+  @ApiOperation({ summary: 'Merge guest cart into user cart' })
+  @ApiResponse({
+    status: 200,
+    description: 'Guest cart merged successfully',
+  })
   async mergeGuestCart(
     @Req() req,
     @Res({ passthrough: true }) res,

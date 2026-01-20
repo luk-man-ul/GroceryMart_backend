@@ -11,6 +11,9 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  SHOP_STAFF
+  DELIVERY_STAFF
+  INVENTORY_STAFF
 }
 
 enum OrderStatus {
@@ -20,60 +23,72 @@ enum OrderStatus {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String  @unique
+  password String
+  role     Role    @default(USER)
+  isActive Boolean @default(true)
 
-  cart      Cart?
-  orders    Order[]
+  cart Cart?
+
+  orders         Order[] @relation("UserOrders")
+  deliveryOrders Order[] @relation("DeliveryOrders")
+
+  localSales LocalSale[] @relation("StaffSales")
+
+  // ✅ REQUIRED FOR INVENTORY
+  stockLogs StockLog[] // <-- FIX
 
   createdAt DateTime @default(now())
 }
 
 model Category {
-  id     Int     @id @default(autoincrement())
-  name   String
-  image  String?
-  trash  Boolean @default(false)
+  id    Int     @id @default(autoincrement())
+  name  String
+  image String?
+  trash Boolean @default(false)
 
   products Product[]
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  price       Float
-  offerPrice  Float?
-  image       String?
-  stock       Int
-  stockType   String   // quantity / kg
-  trash       Boolean  @default(false)
+  id         Int     @id @default(autoincrement())
+  name       String
+  price      Float
+  offerPrice Float?
+  image      String?
+  stock      Int
+  stockType  String
+  trash      Boolean @default(false)
 
-  categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
 
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  localSaleItems LocalSaleItem[]
+
+  // ✅ REQUIRED FOR INVENTORY
+  stockLogs StockLog[] // <-- FIX
 }
 
 model Cart {
-  id      Int     @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   userId  Int?    @unique
   guestId String? @unique
 
-  user    User?   @relation(fields: [userId], references: [id])
-  items   CartItem[]
+  user  User?      @relation(fields: [userId], references: [id])
+  items CartItem[]
 }
 
 model CartItem {
-  id        Int @id @default(autoincrement())
-  quantity  Int
+  id       Int @id @default(autoincrement())
+  quantity Int
 
-  cartId    Int
-  cart      Cart @relation(fields: [cartId], references: [id])
+  cartId Int
+  cart   Cart @relation(fields: [cartId], references: [id])
 
   productId Int
   product   Product @relation(fields: [productId], references: [id])
@@ -84,22 +99,62 @@ model Order {
   totalPrice Float
   status     OrderStatus @default(PLACED)
 
-  userId     Int
-  user       User @relation(fields: [userId], references: [id])
+  userId Int
+  user   User @relation("UserOrders", fields: [userId], references: [id])
 
-  items      OrderItem[]
+  deliveryStaffId Int?
+  deliveryStaff   User? @relation("DeliveryOrders", fields: [deliveryStaffId], references: [id])
 
-  createdAt  DateTime @default(now())
+  items     OrderItem[]
+  createdAt DateTime    @default(now())
 }
 
 model OrderItem {
-  id        Int @id @default(autoincrement())
-  quantity  Int
-  price     Float
+  id       Int   @id @default(autoincrement())
+  quantity Int
+  price    Float
 
-  orderId   Int
-  order     Order @relation(fields: [orderId], references: [id])
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id])
 
   productId Int
   product   Product @relation(fields: [productId], references: [id])
+}
+
+model LocalSale {
+  id          Int    @id @default(autoincrement())
+  totalAmount Float
+  paymentMode String
+  staffId     Int
+  staff       User   @relation("StaffSales", fields: [staffId], references: [id])
+
+  items LocalSaleItem[]
+
+  createdAt DateTime @default(now())
+}
+
+model LocalSaleItem {
+  id          Int   @id @default(autoincrement())
+  quantity    Int
+  priceAtSale Float
+
+  localSaleId Int
+  localSale   LocalSale @relation(fields: [localSaleId], references: [id])
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model StockLog {
+  id        Int @id @default(autoincrement())
+  productId Int
+  staffId   Int
+  oldStock  Int
+  addedQty  Int
+  newStock  Int
+
+  product Product @relation(fields: [productId], references: [id])
+  staff   User    @relation(fields: [staffId], references: [id])
+
+  createdAt DateTime @default(now())
 }

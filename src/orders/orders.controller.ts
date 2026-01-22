@@ -14,6 +14,7 @@ import { AuthGuard } from '@nestjs/passport'
 import { Roles } from '../auth/roles.decorator'
 import { RolesGuard } from '../auth/roles.guard'
 import { OrderStatus } from '@prisma/client'
+import { PlaceOrderDto } from './dto/place-order.dto'
 
 import {
   ApiTags,
@@ -31,16 +32,22 @@ export class OrdersController {
   constructor(private service: OrdersService) {}
 
   // USER → Place Order
-  @Post()
-  @ApiOperation({ summary: 'Place a new order' })
-  @ApiResponse({
-    status: 201,
-    description: 'Order placed successfully',
-  })
-  placeOrder(@Req() req) {
-    // ✅ FIX IS HERE
-    return this.service.placeOrder(req.user.userId)
-  }
+ @Post()
+@ApiOperation({ summary: 'Place a new order' })
+@ApiResponse({
+  status: 201,
+  description: 'Order placed successfully',
+})
+placeOrder(
+  @Req() req,
+  @Body() dto: PlaceOrderDto,
+) {
+  return this.service.placeOrder(
+    req.user.userId,
+    dto,
+  )
+}
+
 
   // USER → View own orders
   @Get('my')

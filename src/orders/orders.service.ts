@@ -1,15 +1,17 @@
 import {
   BadRequestException,
   Injectable,
-} from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus } from '@prisma/client';
+} from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
+import { OrderStatus } from '@prisma/client'
+import { PlaceOrderDto } from './dto/place-order.dto'
 
 @Injectable()
 export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
- async placeOrder(userId: number) {
+  // 🔥 CHANGED: added dto parameter
+ async placeOrder(userId: number, dto: PlaceOrderDto) {
   return this.prisma.$transaction(async tx => {
     const cart = await tx.cart.findFirst({
       where: { userId },
@@ -36,8 +38,14 @@ export class OrdersService {
         item.quantity
     }
 
+    // ✅ FIX: include phone & address here
     const order = await tx.order.create({
-      data: { userId, totalPrice },
+      data: {
+        userId,
+        totalPrice,
+        phone: dto.phone ?? null,
+        address: dto.address ?? null,
+      },
     })
 
     await Promise.all(
@@ -85,160 +93,158 @@ export class OrdersService {
       orderBy: {
         createdAt: 'desc',
       },
-    });
+    })
   }
 
- // 🔹 Admin: All Orders (FIXED FOR RELOAD CONSISTENCY)
-async getAllOrders() {
-  return this.prisma.order.findMany({
-    include: {
-      user: true,
-
-      // ✅ INCLUDE DELIVERY STAFF (CRITICAL FIX)
-      deliveryStaff: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+  // 🔹 Admin: All Orders
+  async getAllOrders() {
+    return this.prisma.order.findMany({
+      include: {
+        user: true,
+        deliveryStaff: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        items: {
+          include: {
+            product: true,
+          },
         },
       },
-
-      items: {
-        include: {
-          product: true,
-        },
+      orderBy: {
+        createdAt: 'desc',
       },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
-}
+    })
+  }
 
-  // 🔹 Admin: Update Status
-  async updateOrderStatus(orderId: number, status: OrderStatus) {
+  async updateOrderStatus(
+    orderId: number,
+    status: OrderStatus,
+  ) {
     return this.prisma.order.update({
       where: { id: orderId },
       data: { status },
-    });
+    })
   }
 
-  // 🔹 Delivery Staff: Get assigned orders
-async getOrdersForDeliveryStaff(deliveryStaffId: number) {
-  return this.prisma.order.findMany({
-    where: {
-      deliveryStaffId,
-      status: {
-        in: ['PLACED', 'PROCESSING'],
-      },
-    },
-    include: {
-      user: {
-        select: {
-          name: true,
-        },
-      },
-      items: {
-        include: {
-          product: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  })
-}
-
-// 🔹 Delivery Staff: Update own order status
-async updateDeliveryOrderStatus(
-  orderId: number,
-  status: OrderStatus,
-  deliveryStaffId: number,
-) {
-  const order = await this.prisma.order.findUnique({
-    where: { id: orderId },
-  })
-
-  if (!order) {
-    throw new BadRequestException('Order not found')
-  }
-
-  if (order.deliveryStaffId !== deliveryStaffId) {
-    throw new BadRequestException(
-      'You are not assigned to this order',
-    )
-  }
-
-  // Optional: enforce valid transitions
-  if (
-    order.status === 'DELIVERED' ||
-    status === 'PLACED'
+  async getOrdersForDeliveryStaff(
+    deliveryStaffId: number,
   ) {
-    throw new BadRequestException(
-      'Invalid status transition',
-    )
+    return this.prisma.order.findMany({
+      where: {
+        deliveryStaffId,
+        status: {
+          in: ['PLACED', 'PROCESSING'],
+        },
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+          },
+        },
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    })
   }
 
-  return this.prisma.order.update({
-    where: { id: orderId },
-    data: { status },
-  })
-}
+  async updateDeliveryOrderStatus(
+    orderId: number,
+    status: OrderStatus,
+    deliveryStaffId: number,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    })
 
+    if (!order) {
+      throw new BadRequestException(
+        'Order not found',
+      )
+    }
 
-// =========================
-// ADMIN → ASSIGN DELIVERY STAFF
-// =========================
-async assignDeliveryStaff(orderId: number, staffId: number) {
-  // 1️⃣ Validate order
-  const order = await this.prisma.order.findUnique({
-    where: { id: orderId },
-  })
+    if (order.deliveryStaffId !== deliveryStaffId) {
+      throw new BadRequestException(
+        'You are not assigned to this order',
+      )
+    }
 
-  if (!order) {
-    throw new BadRequestException('Order not found')
+    if (
+      order.status === 'DELIVERED' ||
+      status === 'PLACED'
+    ) {
+      throw new BadRequestException(
+        'Invalid status transition',
+      )
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { status },
+    })
   }
 
-  // ❌ Block assignment if already delivered
-  if (order.status === 'DELIVERED') {
-    throw new BadRequestException(
-      'Cannot assign delivery staff to a delivered order',
-    )
+  async assignDeliveryStaff(
+    orderId: number,
+    staffId: number,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    })
+
+    if (!order) {
+      throw new BadRequestException(
+        'Order not found',
+      )
+    }
+
+    if (order.status === 'DELIVERED') {
+      throw new BadRequestException(
+        'Cannot assign delivery staff to a delivered order',
+      )
+    }
+
+    if (order.deliveryStaffId) {
+      throw new BadRequestException(
+        'Delivery staff already assigned',
+      )
+    }
+
+    const staff = await this.prisma.user.findUnique({
+      where: { id: staffId },
+    })
+
+    if (
+      !staff ||
+      staff.role !== 'DELIVERY_STAFF'
+    ) {
+      throw new BadRequestException(
+        'Invalid delivery staff',
+      )
+    }
+
+    if (!staff.isActive) {
+      throw new BadRequestException(
+        'Delivery staff is inactive',
+      )
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        deliveryStaffId: staffId,
+        status: 'PROCESSING',
+      },
+    })
   }
-
-  // ❌ Block reassignment
-  if (order.deliveryStaffId) {
-    throw new BadRequestException(
-      'Delivery staff already assigned',
-    )
-  }
-
-  // 2️⃣ Validate staff
-  const staff = await this.prisma.user.findUnique({
-    where: { id: staffId },
-  })
-
-  if (!staff || staff.role !== 'DELIVERY_STAFF') {
-    throw new BadRequestException(
-      'Invalid delivery staff',
-    )
-  }
-
-  if (!staff.isActive) {
-    throw new BadRequestException(
-      'Delivery staff is inactive',
-    )
-  }
-
-  // 3️⃣ Assign staff (ONE-TIME, TRANSACTIONALLY SAFE)
-  return this.prisma.order.update({
-    where: { id: orderId },
-    data: {
-      deliveryStaffId: staffId,
-      status: 'PROCESSING',
-    },
-  })
-}
-
 }

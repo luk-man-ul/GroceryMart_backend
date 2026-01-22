@@ -101,6 +101,10 @@ model Order {
   totalPrice Float
   status     OrderStatus @default(PLACED)
 
+  // ✅ NEW (SNAPSHOT DATA)
+  phone      String?
+  address    String?
+
   userId Int
   user   User @relation("UserOrders", fields: [userId], references: [id])
 

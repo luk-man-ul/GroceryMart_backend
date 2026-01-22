@@ -1,9 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import {
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+import * as bcrypt from 'bcrypt'
+import { PrismaService } from '../prisma/prisma.service'
+import { RegisterDto } from './dto/register.dto'
+import { LoginDto } from './dto/login.dto'
 
 @Injectable()
 export class AuthService {
@@ -13,58 +16,79 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    console.log('REGISTER DTO RECEIVED:', dto);
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    console.log('REGISTER DTO RECEIVED:', dto)
 
-    const user = await this.prisma.user.create({
+    const hashedPassword = await bcrypt.hash(dto.password, 10)
+
+    await this.prisma.user.create({
       data: {
         name: dto.name,
         email: dto.email,
         password: hashedPassword,
       },
-    });
+    })
 
-    return { message: 'User registered successfully' };
+    return { message: 'User registered successfully' }
   }
 
   async login(dto: LoginDto) {
-  console.log('LOGGING IN', dto)
+    console.log('LOGGING IN', dto)
 
-  const user = await this.prisma.user.findUnique({
-    where: { email: dto.email },
-  })
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    })
 
-  if (!user) {
-    throw new UnauthorizedException('Invalid credentials')
-  }
+    if (!user) {
+      throw new UnauthorizedException(
+        'Invalid credentials',
+      )
+    }
 
-  // 🔒 BLOCK DISABLED USERS (VERY IMPORTANT)
-  if (!user.isActive) {
-    throw new UnauthorizedException(
-      'Account disabled by admin',
+    // 🔒 BLOCK DISABLED USERS
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'Account disabled by admin',
+      )
+    }
+
+    const passwordMatch = await bcrypt.compare(
+      dto.password,
+      user.password,
     )
+
+    if (!passwordMatch) {
+      throw new UnauthorizedException(
+        'Invalid credentials',
+      )
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    }
+
+    const token = await this.jwtService.signAsync(
+      payload,
+    )
+
+    return {
+      access_token: token,
+    }
   }
 
-  const passwordMatch = await bcrypt.compare(
-    dto.password,
-    user.password,
-  )
-
-  if (!passwordMatch) {
-    throw new UnauthorizedException('Invalid credentials')
+  // ✅ NEW METHOD (THIS FIXES /auth/me)
+  async getMe(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    })
   }
-
-  const payload = {
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-  }
-
-  const token = await this.jwtService.signAsync(payload)
-
-  return {
-    access_token: token,
-  }
-}
-
 }

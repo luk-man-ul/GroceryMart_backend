@@ -9,12 +9,13 @@ import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { AdminStaffModule } from './admin/staff/admin-staff.module';
 import { StaffBillingModule } from './staff/billing/staff-billing.module'
+import { AdminInventoryModule } from './admin/inventory/admin-inventory.module'
 import { AdminSalesModule } from './admin/sales/admin-sales.module'
 import { DeliveryModule } from './staff/delivery/delivery.module'
 import { InventoryModule } from './staff/inventory/inventory.module'
 @Module({
   imports: [PrismaModule, AuthModule, CategoriesModule, ProductsModule, CartModule,
-     OrdersModule, AdminSalesModule, AdminStaffModule,StaffBillingModule,DeliveryModule,InventoryModule],
+     OrdersModule, AdminSalesModule, AdminStaffModule,StaffBillingModule,DeliveryModule,InventoryModule, AdminInventoryModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -27,18 +27,19 @@ export class InventoryController {
   }
 
   // PATCH /staff/inventory/:id/add-stock
-  @Patch(':id/add-stock')
-  addStock(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AddStockDto,
-    @Req() req,
-  ) {
-    return this.inventoryService.addStock(
-      id,
-      req.user.id,
-      dto.quantity,
-    )
-  }
+ @Patch(':id/add-stock')
+addStock(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() dto: AddStockDto,
+  @Req() req,
+) {
+  return this.inventoryService.addStock(
+    id,
+    req.user.userId,
+    dto.quantity,
+  )
+}
+
 
   // GET /staff/inventory/low-stock
   @Get('low-stock')

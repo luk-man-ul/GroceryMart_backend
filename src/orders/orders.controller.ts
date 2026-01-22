@@ -4,7 +4,9 @@ import {
   Param,
   Patch,
   Post,
+  Body,
   Req,
+  ParseIntPipe,
   UseGuards,
 } from '@nestjs/common'
 import { OrdersService } from './orders.service'
@@ -89,4 +91,45 @@ export class OrdersController {
   ) {
     return this.service.updateOrderStatus(+id, status)
   }
+
+  // DELIVERY STAFF → Get assigned orders
+@UseGuards(RolesGuard)
+@Roles('DELIVERY_STAFF')
+@Get('delivery/my')
+getMyDeliveryOrders(@Req() req) {
+  return this.service.getOrdersForDeliveryStaff(
+    req.user.userId,
+  )
 }
+
+// DELIVERY STAFF → Update own order status
+@UseGuards(RolesGuard)
+@Roles('DELIVERY_STAFF')
+@Patch('delivery/:id/status')
+updateDeliveryStatus(
+  @Param('id') id: string,
+  @Body('status') status: OrderStatus,
+  @Req() req,
+) {
+  return this.service.updateDeliveryOrderStatus(
+    +id,
+    status,
+    req.user.userId,
+  )
+}
+
+
+// ADMIN → Assign delivery staff to order
+@UseGuards(RolesGuard)
+@Roles('ADMIN')
+@Patch(':id/assign-delivery/:staffId')
+assignDeliveryStaff(
+  @Param('id', ParseIntPipe) orderId: number,
+  @Param('staffId', ParseIntPipe) staffId: number,
+) {
+  return this.service.assignDeliveryStaff(orderId, staffId)
+}
+
+}
+
+

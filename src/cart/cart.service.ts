@@ -5,48 +5,45 @@ import {
 import { PrismaService } from '../prisma/prisma.service'
 import { AddToCartDto } from './dto/add-to-cart.dto'
 import { UpdateCartDto } from './dto/update-cart.dto'
+import { Cart } from '@prisma/client' // 🔥 IMPORTANT
 
 @Injectable()
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  // 🔹 Get or Create Cart (USER or GUEST) — PRISMA SAFE
+  // =========================
+  // GET OR CREATE CART
+  // =========================
   private async getOrCreateCart(
     userId: number | null,
     guestId?: string,
-  ) {
-    let where: any = {}
+  ): Promise<Cart> {
+    // ✅ EXPLICIT TYPE — FIXES TS2322 FOREVER
+    let cart: Cart | null = null
 
     if (userId !== null) {
-      where = { userId }
+      cart = await this.prisma.cart.findUnique({
+        where: { userId },
+      })
     } else if (guestId) {
-      where = { guestId }
+      cart = await this.prisma.cart.findUnique({
+        where: { guestId },
+      })
     }
 
-    let cart = await this.prisma.cart.findFirst({
-      where,
-    })
-
-    if (cart) {
-      return cart
-    }
-
-    const data: any = {}
-
-    if (userId !== null) {
-      data.userId = userId
-    }
-
-    if (guestId) {
-      data.guestId = guestId
-    }
+    if (cart) return cart
 
     return this.prisma.cart.create({
-      data,
+      data: {
+        userId: userId ?? undefined,
+        guestId: guestId ?? undefined,
+      },
     })
   }
 
-  // 🔹 Add to Cart
+  // =========================
+  // ADD TO CART
+  // =========================
   async addToCart(params: {
     userId: number | null
     guestId?: string
@@ -66,20 +63,25 @@ export class CartService {
       throw new BadRequestException('Insufficient stock')
     }
 
-    const cart = await this.getOrCreateCart(userId, guestId)
+    const cart = await this.getOrCreateCart(
+      userId,
+      guestId,
+    )
 
-    const existingItem = await this.prisma.cartItem.findFirst({
-      where: {
-        cartId: cart.id,
-        productId: dto.productId,
-      },
-    })
+    const existingItem =
+      await this.prisma.cartItem.findFirst({
+        where: {
+          cartId: cart.id,
+          productId: dto.productId,
+        },
+      })
 
     if (existingItem) {
       return this.prisma.cartItem.update({
         where: { id: existingItem.id },
         data: {
-          quantity: existingItem.quantity + dto.quantity,
+          quantity:
+            existingItem.quantity + dto.quantity,
         },
       })
     }
@@ -93,7 +95,9 @@ export class CartService {
     })
   }
 
-  // 🔹 Update Quantity
+  // =========================
+  // UPDATE CART ITEM
+  // =========================
   async updateCart(params: {
     userId: number | null
     guestId?: string
@@ -101,14 +105,18 @@ export class CartService {
   }) {
     const { userId, guestId, dto } = params
 
-    const cart = await this.getOrCreateCart(userId, guestId)
+    const cart = await this.getOrCreateCart(
+      userId,
+      guestId,
+    )
 
-    const item = await this.prisma.cartItem.findFirst({
-      where: {
-        cartId: cart.id,
-        productId: dto.productId,
-      },
-    })
+    const item =
+      await this.prisma.cartItem.findFirst({
+        where: {
+          cartId: cart.id,
+          productId: dto.productId,
+        },
+      })
 
     if (!item) {
       throw new BadRequestException('Item not in cart')
@@ -120,7 +128,9 @@ export class CartService {
     })
   }
 
-  // 🔹 Remove Item
+  // =========================
+  // REMOVE CART ITEM
+  // =========================
   async removeFromCart(params: {
     userId: number | null
     guestId?: string
@@ -128,17 +138,23 @@ export class CartService {
   }) {
     const { userId, guestId, productId } = params
 
-    const cart = await this.getOrCreateCart(userId, guestId)
+    const cart = await this.getOrCreateCart(
+      userId,
+      guestId,
+    )
 
-    const item = await this.prisma.cartItem.findFirst({
-      where: {
-        cartId: cart.id,
-        productId,
-      },
-    })
+    const item =
+      await this.prisma.cartItem.findFirst({
+        where: {
+          cartId: cart.id,
+          productId,
+        },
+      })
 
     if (!item) {
-      throw new BadRequestException('Item not found in cart')
+      throw new BadRequestException(
+        'Item not found in cart',
+      )
     }
 
     return this.prisma.cartItem.delete({
@@ -146,28 +162,35 @@ export class CartService {
     })
   }
 
-  // 🔹 View Cart (FIXED: return cartItem id + productId)
+  // =========================
+  // GET CART
+  // =========================
   async getCart(params: {
     userId: number | null
     guestId?: string
   }) {
     const { userId, guestId } = params
 
-    const cart = await this.getOrCreateCart(userId, guestId)
+    const cart = await this.getOrCreateCart(
+      userId,
+      guestId,
+    )
 
-   const items = await this.prisma.cartItem.findMany({
-  where: { cartId: cart.id },
-  orderBy: { id: 'asc' }, // ✅ STABLE ORDER
-  include: { product: true },
-})
+    const items =
+      await this.prisma.cartItem.findMany({
+        where: { cartId: cart.id },
+        include: { product: true },
+        orderBy: { id: 'asc' },
+      })
 
     const formattedItems = items.map(item => {
       const price =
-        item.product.offerPrice ?? item.product.price
+        item.product.offerPrice ??
+        item.product.price
 
       return {
-        id: item.id,                 
-        productId: item.productId,   
+        id: item.id,
+        productId: item.productId,
         product: item.product,
         quantity: item.quantity,
         total: price * item.quantity,
@@ -186,54 +209,59 @@ export class CartService {
     }
   }
 
+  // =========================
+  // MERGE GUEST CART → USER
+  // =========================
   async mergeGuestCart(userId: number, guestId: string) {
-  const guestCart = await this.prisma.cart.findFirst({
-    where: { guestId },
-    include: { items: true },
-  })
+    return this.prisma.$transaction(async tx => {
+      const guestCart = await tx.cart.findUnique({
+        where: { guestId },
+        include: { items: true },
+      })
 
-  if (!guestCart || guestCart.items.length === 0) {
-    return { message: 'Guest cart empty' }
-  }
+      if (
+        !guestCart ||
+        guestCart.items.length === 0
+      ) {
+        return { message: 'Guest cart empty' }
+      }
 
-  const userCart = await this.getOrCreateCart(userId)
+      const userCart: Cart =
+        (await tx.cart.findUnique({
+          where: { userId },
+        })) ??
+        (await tx.cart.create({
+          data: { userId },
+        }))
 
-  for (const item of guestCart.items) {
-    const existing = await this.prisma.cartItem.findFirst({
-      where: {
-        cartId: userCart.id,
-        productId: item.productId,
-      },
+      for (const item of guestCart.items) {
+        await tx.cartItem.upsert({
+          where: {
+            cartId_productId: {
+              cartId: userCart.id,
+              productId: item.productId,
+            },
+          },
+          update: {
+            quantity: { increment: item.quantity },
+          },
+          create: {
+            cartId: userCart.id,
+            productId: item.productId,
+            quantity: item.quantity,
+          },
+        })
+      }
+
+      await tx.cartItem.deleteMany({
+        where: { cartId: guestCart.id },
+      })
+
+      await tx.cart.delete({
+        where: { id: guestCart.id },
+      })
+
+      return { message: 'Cart merged successfully' }
     })
-
-    if (existing) {
-      await this.prisma.cartItem.update({
-        where: { id: existing.id },
-        data: {
-          quantity: existing.quantity + item.quantity,
-        },
-      })
-    } else {
-      await this.prisma.cartItem.create({
-        data: {
-          cartId: userCart.id,
-          productId: item.productId,
-          quantity: item.quantity,
-        },
-      })
-    }
   }
-
-  // clear guest cart
-  await this.prisma.cartItem.deleteMany({
-    where: { cartId: guestCart.id },
-  })
-
-  await this.prisma.cart.delete({
-    where: { id: guestCart.id },
-  })
-
-  return { message: 'Guest cart merged into user cart' }
-}
-
 }

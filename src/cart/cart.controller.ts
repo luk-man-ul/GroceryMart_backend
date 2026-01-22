@@ -28,7 +28,6 @@ import {
 @UseGuards(OptionalJwtAuthGuard)
 @Controller('cart')
 export class CartController {
-
   constructor(private service: CartService) {}
 
   // =========================
@@ -36,19 +35,16 @@ export class CartController {
   // =========================
   @Post('add')
   @ApiOperation({ summary: 'Add product to cart (guest or user)' })
-  @ApiResponse({
-    status: 201,
-    description: 'Product added to cart',
-  })
+  @ApiResponse({ status: 201, description: 'Product added to cart' })
   addToCart(
     @Req() req,
     @Res({ passthrough: true }) res,
     @Body() dto: AddToCartDto,
   ) {
-    const userId = req.user?.sub ?? null
+    // ✅ FIXED
+    const userId = req.user?.userId ?? null
     let guestId = req.cookies?.guestId
 
-    // 🔑 Create guestId ONLY for public users
     if (!userId && !guestId) {
       guestId = uuid()
       res.cookie('guestId', guestId, {
@@ -64,13 +60,11 @@ export class CartController {
   // UPDATE CART ITEM
   // =========================
   @Put('update')
-   @ApiOperation({ summary: 'Update cart item quantity' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cart updated successfully',
-  })
+  @ApiOperation({ summary: 'Update cart item quantity' })
+  @ApiResponse({ status: 200, description: 'Cart updated successfully' })
   updateCart(@Req() req, @Body() dto: UpdateCartDto) {
-    const userId = req.user?.sub ?? null
+    // ✅ FIXED
+    const userId = req.user?.userId ?? null
     const guestId = userId ? undefined : req.cookies?.guestId
 
     return this.service.updateCart({ userId, guestId, dto })
@@ -81,44 +75,37 @@ export class CartController {
   // =========================
   @Delete('remove')
   @ApiOperation({ summary: 'Remove product from cart' })
-  @ApiResponse({
-    status: 200,
-    description: 'Product removed from cart',
-  })
+  @ApiResponse({ status: 200, description: 'Product removed from cart' })
   removeFromCart(@Req() req, @Body('productId') productId: number) {
-    const userId = req.user?.sub ?? null
+    // ✅ FIXED
+    const userId = req.user?.userId ?? null
     const guestId = userId ? undefined : req.cookies?.guestId
 
     return this.service.removeFromCart({ userId, guestId, productId })
   }
 
-// =========================
-// GET CART (GUEST / USER)
-// =========================
-@Get()
- @ApiOperation({ summary: 'Get current cart (guest or user)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Current cart details',
-  })
-getCart(
-  @Req() req,
-  @Res({ passthrough: true }) res,
-) {
-  const userId = req.user?.sub ?? null
-  let guestId = userId ? undefined : req.cookies?.guestId
+  // =========================
+  // GET CART (GUEST / USER)
+  // =========================
+  @Get()
+  @ApiOperation({ summary: 'Get current cart (guest or user)' })
+  @ApiResponse({ status: 200, description: 'Current cart details' })
+  getCart(@Req() req, @Res({ passthrough: true }) res) {
+    // ✅ FIXED
+    const userId = req.user?.userId ?? null
+    let guestId = userId ? undefined : req.cookies?.guestId
 
-  // 🔥 FIX: ensure guestId exists BEFORE reading cart
-  if (!userId && !guestId) {
-    guestId = uuid()
-    res.cookie('guestId', guestId, {
-      httpOnly: true,
-      sameSite: 'lax',
-    })
+    if (!userId && !guestId) {
+      guestId = uuid()
+      res.cookie('guestId', guestId, {
+        httpOnly: true,
+        sameSite: 'lax',
+      })
+    }
+
+    return this.service.getCart({ userId, guestId })
   }
 
-  return this.service.getCart({ userId, guestId })
-}
   // =========================
   // MERGE GUEST CART → USER CART
   // =========================
@@ -126,15 +113,13 @@ getCart(
   @ApiBearerAuth()
   @Post('merge')
   @ApiOperation({ summary: 'Merge guest cart into user cart' })
-  @ApiResponse({
-    status: 200,
-    description: 'Guest cart merged successfully',
-  })
+  @ApiResponse({ status: 200, description: 'Guest cart merged successfully' })
   async mergeGuestCart(
     @Req() req,
     @Res({ passthrough: true }) res,
   ) {
-    const userId = req.user.sub
+    // ✅ FIXED
+    const userId = req.user.userId
     const guestId = req.cookies?.guestId
 
     if (!guestId) {
@@ -143,9 +128,7 @@ getCart(
 
     const result = await this.service.mergeGuestCart(userId, guestId)
 
-    // 🔥 CRITICAL: remove guest identity AFTER merge
     res.clearCookie('guestId')
-
     return result
   }
 }

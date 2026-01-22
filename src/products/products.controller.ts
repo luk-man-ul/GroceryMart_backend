@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto'
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -130,7 +131,7 @@ restore(@Param('id') id: string) {
 })
 update(
   @Param('id') id: string,
-  @Body() dto: CreateProductDto,
+  @Body() dto: UpdateProductDto,
 ) {
   return this.service.update(+id, dto)
 }

@@ -80,21 +80,52 @@ export class OrdersService {
 
 
   // 🔹 User Orders
-  async getMyOrders(userId: number) {
-    return this.prisma.order.findMany({
-      where: { userId },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
+ async getMyOrders(userId: number) {
+  return this.prisma.order.findMany({
+    where: { userId },
+    include: {
+      items: {
+        include: {
+          product: true,
         },
       },
-      orderBy: {
-        createdAt: 'desc',
+      deliveryStaff: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
       },
-    })
-  }
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+}
+
+async getOrderById(orderId: number, userId: number) {
+  return this.prisma.order.findFirst({
+    where: {
+      id: orderId,
+      userId,
+    },
+    include: {
+      items: {
+        include: {
+          product: true,
+        },
+      },
+      deliveryStaff: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+  })
+}
+
+
 
   // 🔹 Admin: All Orders
   async getAllOrders() {

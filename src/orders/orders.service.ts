@@ -10,9 +10,10 @@ import { PlaceOrderDto } from './dto/place-order.dto'
 export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
-  // 🔥 CHANGED: added dto parameter
- async placeOrder(userId: number, dto: PlaceOrderDto) {
+  // 🔥 CHANGED
+async placeOrder(userId: number, dto: PlaceOrderDto) {
   return this.prisma.$transaction(async tx => {
+    // 1️⃣ Fetch cart
     const cart = await tx.cart.findFirst({
       where: { userId },
       include: {
@@ -24,6 +25,19 @@ export class OrdersService {
       throw new BadRequestException('Cart is empty')
     }
 
+    // 2️⃣ Validate address ownership
+    const address = await tx.address.findFirst({
+      where: {
+        id: dto.addressId,
+        userId,
+      },
+    })
+
+    if (!address) {
+      throw new BadRequestException('Invalid delivery address')
+    }
+
+    // 3️⃣ Calculate total & validate stock
     let totalPrice = 0
 
     for (const item of cart.items) {
@@ -38,16 +52,20 @@ export class OrdersService {
         item.quantity
     }
 
-    // ✅ FIX: include phone & address here
+    // 4️⃣ Create order with address reference + snapshot
     const order = await tx.order.create({
       data: {
         userId,
         totalPrice,
-        phone: dto.phone ?? null,
-        address: dto.address ?? null,
+        addressId: address.id,
+
+        // snapshot (important for history & delivery)
+        phone: address.phone,
+        address: `${address.name}, ${address.house}, ${address.street}, ${address.city} - ${address.pincode}`,
       },
     })
 
+    // 5️⃣ Create order items & update stock
     await Promise.all(
       cart.items.map(item =>
         Promise.all([
@@ -70,6 +88,7 @@ export class OrdersService {
       ),
     )
 
+    // 6️⃣ Clear cart
     await tx.cartItem.deleteMany({
       where: { cartId: cart.id },
     })
@@ -77,6 +96,7 @@ export class OrdersService {
     return { orderId: order.id }
   })
 }
+
 
 
   // 🔹 User Orders

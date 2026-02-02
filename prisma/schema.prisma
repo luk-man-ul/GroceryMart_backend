@@ -32,13 +32,31 @@ model User {
 
   cart Cart?
 
-  orders         Order[] @relation("UserOrders")
-  deliveryOrders Order[] @relation("DeliveryOrders")
+  orders         Order[]   @relation("UserOrders")
+  deliveryOrders Order[]   @relation("DeliveryOrders")
+  addresses      Address[] @relation("UserAddress")
 
   localSales LocalSale[] @relation("StaffSales")
+  stockLogs  StockLog[]
 
-  // ✅ REQUIRED FOR INVENTORY
-  stockLogs StockLog[] // <-- FIX
+  createdAt DateTime @default(now())
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+
+  name      String
+  phone     String
+  house     String
+  street    String
+  city      String
+  pincode   String
+
+  isDefault Boolean @default(false)
+
+  user   User    @relation("UserAddress", fields: [userId], references: [id])
+  orders Order[] @relation("OrderAddress")
 
   createdAt DateTime @default(now())
 }
@@ -68,9 +86,7 @@ model Product {
   cartItems      CartItem[]
   orderItems     OrderItem[]
   localSaleItems LocalSaleItem[]
-
-  // ✅ REQUIRED FOR INVENTORY
-  stockLogs StockLog[] // <-- FIX
+  stockLogs      StockLog[]
 }
 
 model Cart {
@@ -101,9 +117,12 @@ model Order {
   totalPrice Float
   status     OrderStatus @default(PLACED)
 
-  // ✅ NEW (SNAPSHOT DATA)
-  phone      String?
-  address    String?
+  // snapshot (keep for backward compatibility)
+  phone   String?
+  address String?
+
+  addressId  Int?
+  addressRel Address? @relation("OrderAddress", fields: [addressId], references: [id])
 
   userId Int
   user   User @relation("UserOrders", fields: [userId], references: [id])
@@ -112,7 +131,7 @@ model Order {
   deliveryStaff   User? @relation("DeliveryOrders", fields: [deliveryStaffId], references: [id])
 
   items     OrderItem[]
-  createdAt DateTime    @default(now())
+  createdAt DateTime @default(now())
 }
 
 model OrderItem {
@@ -131,8 +150,9 @@ model LocalSale {
   id          Int    @id @default(autoincrement())
   totalAmount Float
   paymentMode String
-  staffId     Int
-  staff       User   @relation("StaffSales", fields: [staffId], references: [id])
+
+  staffId Int
+  staff   User @relation("StaffSales", fields: [staffId], references: [id])
 
   items LocalSaleItem[]
 
@@ -155,9 +175,10 @@ model StockLog {
   id        Int @id @default(autoincrement())
   productId Int
   staffId   Int
-  oldStock  Int
-  addedQty  Int
-  newStock  Int
+
+  oldStock Int
+  addedQty Int
+  newStock Int
 
   product Product @relation(fields: [productId], references: [id])
   staff   User    @relation(fields: [staffId], references: [id])

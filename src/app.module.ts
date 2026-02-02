@@ -13,9 +13,11 @@ import { AdminInventoryModule } from './admin/inventory/admin-inventory.module'
 import { AdminSalesModule } from './admin/sales/admin-sales.module'
 import { DeliveryModule } from './staff/delivery/delivery.module'
 import { InventoryModule } from './staff/inventory/inventory.module'
+import { AdminProductsModule } from './admin/product/admin-products.module'
+import { AddressModule } from './address/address.module';
 @Module({
-  imports: [PrismaModule, AuthModule, CategoriesModule, ProductsModule, CartModule,
-     OrdersModule, AdminSalesModule, AdminStaffModule,StaffBillingModule,DeliveryModule,InventoryModule, AdminInventoryModule],
+  imports: [PrismaModule, AuthModule, CategoriesModule, ProductsModule,AdminProductsModule, CartModule,
+     OrdersModule, AddressModule, AdminSalesModule, AdminStaffModule,StaffBillingModule,DeliveryModule,InventoryModule, AdminInventoryModule],
   controllers: [AppController],
   providers: [AppService],
 })

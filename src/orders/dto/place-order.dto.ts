@@ -1,13 +1,6 @@
-import { IsOptional, IsString, MinLength } from 'class-validator'
+import { IsInt } from 'class-validator'
 
 export class PlaceOrderDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(10)
-  phone?: string
-
-  @IsOptional()
-  @IsString()
-  @MinLength(10)
-  address?: string
+  @IsInt()
+  addressId: number
 }

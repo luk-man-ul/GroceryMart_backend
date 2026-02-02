@@ -51,13 +51,32 @@ getAll(
   @Query('search') search?: string,
   @Query('categoryId') categoryId?: string,
   @Query('trash') trash?: string,
+  @Query('cursor') cursor?: string,
+  @Query('limit') limit = '10',
 ) {
   return this.service.findAll(
     search,
     categoryId ? +categoryId : undefined,
     trash === 'true',
+    cursor ? +cursor : undefined,
+    +limit,
   )
 }
+
+
+// ✅ GET ALL PRODUCTS FOR BILLING POS (NO PAGINATION)
+@Get('all')
+@ApiOperation({ summary: 'Get all products for Billing POS' })
+@ApiResponse({
+  status: 200,
+  description: 'All products (no pagination)',
+})
+async getAllForBillingPOS() {
+  const products = await this.service.findAllForBillingPOS()
+  return { data: products }
+}
+
+
 
   // ✅ GET SINGLE PRODUCT
   @Get(':id')
